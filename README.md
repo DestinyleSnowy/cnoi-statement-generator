@@ -55,7 +55,11 @@ npm install
 npm run build
 ```
 
-产物将输出到 `./build/client` 目录下。使用任意静态服务器对外公开该目录即可。
+产物将输出到 `./build/client` 目录下。使用任意静态服务器对外公开该目录即可。对于较简单的部署，你可以直接运行：
+
+```shell
+npm run preview
+```
 
 ## 许可证
 
