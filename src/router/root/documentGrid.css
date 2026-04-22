@@ -61,7 +61,7 @@
       > div:nth-child(1) {
         height: calc(100% - 2 * var(--root-document-grid-card-border-size));
         width: unset;
-        aspect-ratio: calc(((sqrt(5) - 1) / 2));
+        aspect-ratio: calc(0.6180339887498949);
         background: linear-gradient(
           to left top,
           hsl(var(--doc-preview-card-color-hue), 100%, 60%),
