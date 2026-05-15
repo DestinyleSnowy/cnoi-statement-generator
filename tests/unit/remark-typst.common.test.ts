@@ -163,13 +163,20 @@ test("Escape Typst String", () => {
 describe("Code Soft Breaks", () => {
   test("keeps short code runs unchanged", () => {
     const code = "std::vector<int> value";
-    expect(insertCodeSoftBreaks(code)).toBe(code);
+    expect(insertCodeSoftBreaks(code, 56)).toBe(code);
   });
 
   test("adds invisible break points to long code runs", () => {
     const code = `cout<<"${"a".repeat(120)}";`;
-    const result = insertCodeSoftBreaks(code);
+    const result = insertCodeSoftBreaks(code, 56);
     expect(result).toContain("\u{200b}");
+    expect(result.replaceAll("\u{200b}", "")).toBe(code);
+  });
+
+  test("does not split surrogate pairs", () => {
+    const code = "a".repeat(55) + "😀" + "b".repeat(10);
+    const result = insertCodeSoftBreaks(code, 56);
+    expect(result).toContain("😀");
     expect(result.replaceAll("\u{200b}", "")).toBe(code);
   });
 });
@@ -365,6 +372,22 @@ describe("Handlers", () => {
       );
       expect(ctx.data.join("")).toBe(
         '#raw(block: true, lang: "md", "# This is a markdown code block\\nSome *emphasis* here.\\n")\n',
+      );
+    });
+    test("Soft Breaks are Opt-in", () => {
+      const code = `cout<<"${"a".repeat(120)}";`;
+      const ctx = initContext();
+      handlers.code({ type: "code", lang: "cpp", value: code }, ctx);
+      expect(ctx.data.join("")).not.toContain("\u{200b}");
+    });
+    test("Configured Soft Breaks are emitted in Block Code", () => {
+      const code = `cout<<"${"a".repeat(120)}";`;
+      const ctx = initContext({ codeSoftBreakInterval: 56 });
+      handlers.code({ type: "code", lang: "cpp", value: code }, ctx);
+      const text = ctx.data.join("");
+      expect(text).toContain("\u{200b}");
+      expect(text.replaceAll("\u{200b}", "")).toContain(
+        escapeTypstString(code),
       );
     });
   });

@@ -37,6 +37,10 @@ export interface AssetInfo {
   filename: string;
 }
 
+export interface CompilerOptions {
+  codeSoftBreakInterval?: number;
+}
+
 export interface CompilerContext {
   assets: AssetInfo[];
   data: string[];
@@ -45,6 +49,7 @@ export interface CompilerContext {
     string,
     { node: mdast.FootnoteDefinition; visited: boolean }
   >;
+  options: CompilerOptions;
 }
 
 const FOOTNOTE_ID_PREFIX = "user-footnote: ";
@@ -62,25 +67,29 @@ export function escapeTypstString(s: string) {
 }
 
 const CODE_SOFT_BREAK = "\u{200b}";
-const CODE_SOFT_BREAK_INTERVAL = 56;
-const LONG_CODE_RUN_REGEX = /\S{57,}/g;
-const CODE_SOFT_BREAK_CHUNK_REGEX = new RegExp(
-  `(.{${CODE_SOFT_BREAK_INTERVAL}})(?=.)`,
-  "g",
-);
+function insertBreaksIntoCodeRun(run: string, interval: number) {
+  const chars = Array.from(run);
+  const chunks: string[] = [];
+  for (let i = 0; i < chars.length; i += interval)
+    chunks.push(chars.slice(i, i + interval).join(""));
+  return chunks.join(CODE_SOFT_BREAK);
+}
 
-export function insertCodeSoftBreaks(s: string) {
-  return s.replace(LONG_CODE_RUN_REGEX, (run) =>
-    run.replace(CODE_SOFT_BREAK_CHUNK_REGEX, `$1${CODE_SOFT_BREAK}`),
+export function insertCodeSoftBreaks(s: string, interval: number) {
+  if (!Number.isSafeInteger(interval) || interval <= 0) return s;
+  const longCodeRunRegex = new RegExp(`\\S{${interval + 1},}`, "gu");
+  return s.replace(longCodeRunRegex, (run) =>
+    insertBreaksIntoCodeRun(run, interval),
   );
 }
 
-export function initContext(): CompilerContext {
+export function initContext(options: CompilerOptions = {}): CompilerContext {
   return {
     assets: [],
     data: [],
     definitionById: new Map(),
     footnoteById: new Map(),
+    options,
   };
 }
 
@@ -178,7 +187,11 @@ export const handlers = {
     data.push("]\n");
   },
   code: (node, ctx) => {
-    const { data } = ctx;
+    const { data, options } = ctx;
+    const value =
+      options.codeSoftBreakInterval === undefined
+        ? node.value
+        : insertCodeSoftBreaks(node.value, options.codeSoftBreakInterval);
     data.push(
       `#raw(block: true, lang: "${escapeTypstString(
         !node.lang
@@ -189,7 +202,7 @@ export const handlers = {
               ? "md"
               : node.lang,
       )}", "`,
-      escapeTypstString(insertCodeSoftBreaks(node.value)),
+      escapeTypstString(value),
       '")\n',
     );
   },
@@ -426,8 +439,11 @@ function parseRoot(node: mdast.Root, ctx: CompilerContext) {
   data.push("]))\n");
 }
 
-export default function compileMdast(tree: mdast.Root): [string, AssetInfo[]] {
-  const ctx = initContext();
+export default function compileMdast(
+  tree: mdast.Root,
+  options?: CompilerOptions,
+): [string, AssetInfo[]] {
+  const ctx = initContext(options);
   collectDefinitions(tree, ctx);
   parseRoot(tree, ctx);
   return [ctx.data.join(""), ctx.assets];
