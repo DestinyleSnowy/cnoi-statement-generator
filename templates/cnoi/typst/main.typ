@@ -132,6 +132,17 @@
 }
 
 #let in-raw = state("in-raw", false)
+#let raw-line-body(body) = {
+  // Preserve raw spacing while allowing Typst to wrap long code lines at spaces.
+  show regex(" "): s => s + sym.zws
+  par(
+    leading: 0.62em,
+    spacing: 0pt,
+    first-line-indent: 0pt,
+    hanging-indent: 4em,
+    body,
+  )
+}
 #show strong: st => {
   if in-raw.get() { st } else {
     set text(font: ("Latin Modern Roman 12", "SimHei"))
@@ -195,13 +206,13 @@
             box(
               grid(
                 columns: (0pt, 0pt, 100% - 6pt),
-                align: (bottom, bottom, bottom),
+                align: (top, top, top),
                 move(
                   dx: -9pt - measure([#jt.number]).width,
                   text(fill: rgb("#808080"), size: 10pt, [#jt.number]),
                 ),
                 cjk-align-mark,
-                jt.body,
+                raw-line-body(jt.body),
               ),
             ),
             stroke: stroke,
