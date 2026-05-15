@@ -4,6 +4,7 @@ import compileMdast, {
   collectDefinitions,
   escapeTypstString,
   handlers,
+  insertCodeSoftBreaks,
   TYPST_RELATIVE_VALUE_REGEX,
 } from "@/compiler/remarkTypst/compiler";
 import { h64 } from "xxhashjs";
@@ -157,6 +158,20 @@ test("Escape Typst String", () => {
     'This is a \\"test\\" string with \\\\ backslash,\\nnew line,\\ttab, and \\rcarriage return.' +
       '\\"These\\" \\\\ backslash,\\nnew line,\\ttab, and \\rcarriage appears again.',
   );
+});
+
+describe("Code Soft Breaks", () => {
+  test("keeps short code runs unchanged", () => {
+    const code = "std::vector<int> value";
+    expect(insertCodeSoftBreaks(code)).toBe(code);
+  });
+
+  test("adds invisible break points to long code runs", () => {
+    const code = `cout<<"${"a".repeat(120)}";`;
+    const result = insertCodeSoftBreaks(code);
+    expect(result).toContain("\u{200b}");
+    expect(result.replaceAll("\u{200b}", "")).toBe(code);
+  });
 });
 
 describe("Handlers", () => {

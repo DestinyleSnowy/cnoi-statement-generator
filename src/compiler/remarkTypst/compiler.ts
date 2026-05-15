@@ -61,6 +61,20 @@ export function escapeTypstString(s: string) {
     .replace(/\r/g, "\\r");
 }
 
+const CODE_SOFT_BREAK = "\u{200b}";
+const CODE_SOFT_BREAK_INTERVAL = 56;
+const LONG_CODE_RUN_REGEX = /\S{57,}/g;
+const CODE_SOFT_BREAK_CHUNK_REGEX = new RegExp(
+  `(.{${CODE_SOFT_BREAK_INTERVAL}})(?=.)`,
+  "g",
+);
+
+export function insertCodeSoftBreaks(s: string) {
+  return s.replace(LONG_CODE_RUN_REGEX, (run) =>
+    run.replace(CODE_SOFT_BREAK_CHUNK_REGEX, `$1${CODE_SOFT_BREAK}`),
+  );
+}
+
 export function initContext(): CompilerContext {
   return {
     assets: [],
@@ -175,7 +189,7 @@ export const handlers = {
               ? "md"
               : node.lang,
       )}", "`,
-      escapeTypstString(node.value),
+      escapeTypstString(insertCodeSoftBreaks(node.value)),
       '")\n',
     );
   },
